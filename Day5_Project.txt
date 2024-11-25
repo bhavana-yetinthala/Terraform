@@ -1,0 +1,225 @@
+Task:
+
+Let's say there is a development team called "xyz," and this development team has a requirement that whenever they modify the application,.
+
+So, let's say they have an application called app.py, and this is a Python flask application.
+Whenever they make changes to the app.py file, they want the devops team to create a Terraform project.
+
+What is the scope of the terraform project?
+
+To test their changes, they want the devops team to create a VPC.
+Within VPC, they want the development team to create a public subnet.
+
+How do you create a public subnet?
+
+Basically, you need to create a subnet first, and for that subnet, you need to create a route table. The destination of that route table should be an internet gateway.
+And you need to associate this route table with the subnet so that it becomes a public subnet.
+Then you need to create an EC2 instance and deploy this particular application.
+The developer team will share the app.py file; you need to deploy this app.py file onto the EC2 instance and expose the app.py file to the external world.
+Overall, the developer team shared with you the app.py file. You need to create all of the above things, and you will provide them with a URL.
+Let's say the url is "3.4.6.7:80.".
+If they hit this URL, they want to verify if their application is working fine or not.
+So for that, you need to deploy your application on the EC2 instance, and you need to configure the security group accordingly.
+Because you need to open the port, if the application is running on port 80, you need to open that port so that they can access their application.
+
+What will happen if they do it manually?
+
+It will take a lot of time; they have to create a VPC and all the configurations.
+They have to make sure that the security group is working fine.
+Then, after all these steps, they will finally be able to do it.
+
+
+Let's say this is taking 1 hour of time, and this is just for one developer. So how much time will you save as a devops engineer by creating this particular project?
+
+You will save a lot of hours of time considering there will be multiple developers working on that particular project, and then there can be multiple projects.
+Basically, this is a quite common task for devops engineers.
+
+Now, there are two parts to it:
+
+The first part is that you will set up the entire Terraform project.
+And the second part is that you will integrate this with the CI/CD approach.
+
+That means the development team will not share the actual file app.py; that is, they will not share via email or personally.
+They will update this app.py file in a Github repository.
+
+What do you do here?
+
+You can configure Jenkins, which will pull, or you can configure github actions.
+Whenever there is a change, it will pull the latest changes from that particular Github repository, and it will run Terraform.
+
+Here, you should not use EC2 user data; with user data, you can write the script. But let's say you want to deploy a complex project.
+
+Let's say you have 100 files, or let's say you have a project that is not suitable for user data.
+User data is fine when you want to run a small script.
+But when you want to execute a complex project, we will use a concept called provisioners.
+
+Practical:
+
+Can do in github workspaces or vscode.
+
+Important Points:
+1) For vpc, first you have to define the cidr block (for the entire vpc).
+
+When you create an AWS VPC through the UI, what is the first thing that you have to do?
+
+What is your cidr block? That means, what is your IP address range?
+After defining cidr, select AWS Key Pair. For creating key pairs, whatever platform you are using, whether code spaces or vs. code, you can just give the command "ssh-keygen -t rsa." 
+It will generate the public private key for you in your local.
+Just upload that key to use for your EC2 instance.
+
+2) Next, create a VPC; the cidr block comes from the pre-defined step. If you don't want to vary, you can directly define the cidr block. But it's a good practice to vary it.
+
+3) Instead of giving default values, you can provide the values from the terraform.tfvars file.
+
+4) Then create the subnet, given the below conditions:
+
+The subnet has to be in this particular VPC.
+The cidr block provided here is for the subnet.
+Then provide an availability zone, then provide a "true" or "false" condition for whether a subnet created in this VPC should have a public IP or not.
+
+Note:
+
+If you just create the above subnet, it will not be enough; you need to create a route table, and you also need to create an internet gateway.
+And for the above-created route table, you need to attach the particular internet gateway as the destination.
+
+5) Then associate the route table with the subnet.
+
+6) In order to expose this instance or application to the public IP address of the instance, you need to provide an AWS Security Group. Create a security group, and in the ingress configuration, 
+inbound configuration) 
+
+In ingress, ports 80 and 22 are to be opened.
+Port 22 is for ssh; if something goes wrong, you can ssh to the instance and see it (you can log into the instance and fix it).
+Egress is used if you want to access anything from the outside world.
+
+
+Note: In terraform, inbound configuration is represented as ingress, and outbound configuration is represented as egress. 
+
+7) Finally, provide the EC2 configuration, which is a key one. Details like what ami, instance type, key value pair (which can be created with the help of the Terraform code itself and can be used in the respective sub-code), security group, and subnet- ID.
+
+8) In the last step, you need to use provisioners for deploying the application on the EC2 instance. Using provisioners, the application will be deployed.
+
+In the code, you need to tell Terraform how to connect to the particular instance that it has created. So for that, you need to say, "Use the protocol called "ssh", give user name (which instance you are using), provide private key information (because the public key is uploaded to the EC2 instance or uploaded to the key pair resource of AWS, but to connect to it, you need a private key), and provide host details (what is the public ip? Because you are already in this particular resource block, you can simply give "self.publicip"). If you are outside this resource block, to connect to that particular instance's public IP or to get the instance's public IP, you have to say "resource.resourcename.publicip." . But if you are already in that particular resource, whether you want to access ami, instance type, or whatever, if you are inside that particular resource, you can use the "self" keyword (self.ami, self.instancetype).
+
+After connecting to the EC2 instance using Terraform, now use provisioners. (In order to use provisioners, first you need to connect to the EC2 instance prior to using provisioners.).
+
+Explanation of provisioners: 
+
+There is a particular provisioner called file provisioner, using which you are copying the application "app.py" onto the instance.
+The source will be provided as "app.py.".
+destination should be provided at one particular location.
+
+Then use another provisioner called "remote-exec" and execute all the commands on that particular EC2 instance. Below is a basic explanation of commands:
+
+a) Install the Ubuntu-related packages for Python.
+b) Here, you will execute the Python application from the terraform itself.
+
+
+Note: 
+Provisioners are a very important concept and powerful in interviews as well.
+Terraform initialization will take less time if you are not providing any remote backends or any special configurations for the provider.
+
+Testing the code:
+
+First, you need to switch to the directory, then do terraform init.
+Next, do the terraform plan; it will clearly show that it is going to create all of the resources. It will create a vpc, key-value pair, subnet, route table, and internet gateway; it will associate the internet gateway with your subnet; it will create an EC2 instance; and it will associate the security group with the EC2 instance (in the EC2 configuration only).
+Overall, there have to be eight resources that Terraform has to create.
+
+
+Challenges faced:
+
+I was not able to configure the public key and got errors in the path specification. I had trouble importing an ec2 key pair.
+
+
+ChatGPT:
+
+Scope of the Terraform Project:
+
+The Terraform project aims to automate the deployment of infrastructure components necessary for hosting a Python Flask application. This includes provisioning a Virtual Private Cloud (VPC) with a public subnet, setting up necessary routing and security configurations, launching an EC2 instance to host the application, and deploying the application code onto the EC2 instance.
+
+Creating a Public Subnet:
+
+Define the CIDR block for the VPC, ensuring it covers the required IP address range.
+Generate an AWS Key Pair using the ssh-keygen -t rsa command and upload the public key for EC2 instance access.
+Create a VPC with the defined CIDR block.
+Define a subnet within the VPC, specifying its CIDR block and availability zone, along with whether it should have a public IP.
+Create a route table and associate it with the subnet, configuring it to route traffic to an internet gateway.
+Configure a security group allowing inbound access on ports 80 (HTTP) and 22 (SSH) for application and instance management, respectively.
+
+Deploying the Application:
+
+Configure EC2 instance settings, including the AMI, instance type, key pair, security group, and subnet ID.
+Utilize provisioners to deploy the application onto the EC2 instance:
+Use the file provisioner to copy the application code (e.g., app.py) onto the instance.
+Utilize the remote-exec provisioner to execute commands on the instance, such as installing required packages and running the Python application.
+
+Integration with CI/CD Approach:
+
+Implement continuous integration and deployment (CI/CD) pipelines using tools like Jenkins or GitHub Actions.
+Configure the pipeline to trigger Terraform execution upon detecting changes in the GitHub repository containing the application code.
+Automate the provisioning of infrastructure and deployment of the application, reducing manual intervention and saving time for developers and DevOps engineers.
+
+Testing and Challenges:
+
+Verify the Terraform code's functionality by initializing the project, planning changes, and applying them to create the required resources.
+Address challenges such as errors in path specifications, importing EC2 key pairs, and ensuring proper configuration of SSH access for EC2 instances.
+By automating the infrastructure setup and application deployment process with Terraform and integrating it into CI/CD pipelines, the development team can efficiently manage their applications and streamline the deployment workflow, ultimately saving time and effort.
+
+
+Resume:
+
+To effectively highlight your experience working on the task described, you can include the following information on your resume:
+
+Professional Summary/Objective:
+
+Begin your resume with a summary or objective statement that briefly highlights your experience in DevOps, infrastructure automation, and CI/CD methodologies.
+Key Skills:
+
+Include a dedicated section listing relevant technical skills, such as:
+Terraform
+AWS (Virtual Private Cloud, EC2)
+Python (Flask)
+Continuous Integration/Continuous Deployment (CI/CD) tools (e.g., Jenkins, GitHub Actions)
+Infrastructure as Code (IaC) principles
+Work Experience:
+
+Under each relevant job position, detail your responsibilities and achievements related to infrastructure automation and deployment. For example:
+"Automated deployment of AWS infrastructure using Terraform, reducing provisioning time by X%."
+"Implemented CI/CD pipelines with Jenkins/GitHub Actions for seamless application deployment and testing."
+"Managed VPC configuration, including creation of public subnets and routing tables, to support scalable Flask applications."
+Projects Section:
+
+Include a dedicated section showcasing projects you've worked on, providing details about the tasks and technologies used. For instance:
+"Automated Deployment Project: Led the implementation of a Terraform project to provision AWS infrastructure, including VPC, subnets, and EC2 instances, for hosting Python Flask applications. Integrated CI/CD pipelines with GitHub Actions to streamline application deployment and testing processes."
+Education and Certifications:
+
+If relevant, mention any certifications or coursework related to cloud computing, DevOps, or infrastructure automation.
+Achievements and Impact:
+
+Quantify your achievements wherever possible, such as time saved, efficiency improvements, or successful project outcomes.
+Technical Proficiencies:
+
+Provide a comprehensive list of your technical skills, including proficiency levels for each technology or tool mentioned in the task description.
+Additional Information:
+
+Consider including any relevant professional affiliations, conferences attended, or contributions to open-source projects related to DevOps or cloud computing.
+By incorporating these details into your resume, you can effectively communicate your experience and expertise in infrastructure automation and deployment, showcasing your value to potential employers in the DevOps field.
+
+
+User
+Give in short 3-4 lines regarding task and what skills can be included ?
+ChatGPT
+Task: Led the implementation of a Terraform project to automate AWS infrastructure provisioning for Python Flask applications. Integrated CI/CD pipelines with Jenkins/GitHub Actions for seamless deployment. Configured VPC, subnets, EC2 instances, and security groups, ensuring scalability and security.
+
+Skills:
+
+Terraform for infrastructure as code (IaC)
+AWS services (VPC, EC2)
+CI/CD tools (Jenkins, GitHub Actions)
+Python (Flask) application deployment
+
+
+
+
+
+
+

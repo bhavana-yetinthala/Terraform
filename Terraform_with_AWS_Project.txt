@@ -1,0 +1,656 @@
+Setting up Infrastructure on AWS Using Terraform
+
+First, configure the AWS with help of keys in AWS CLI.
+
+- In order to check, if AWS CLI is installed or not. Go to command prompt and type "aws --version".
+- you will get the output as below:
+
+C:\Users\yetin> aws --version
+aws-cli/2.15.14 Python/3.11.6 Windows/10 exe/AMD64 prompt/off
+
+- Then run command "aws configure" in order to connect with aws from terraform.
+
+
+Note: It depends on the permissions of the IAM-User, what access ?, how many resources can it connect to ?, what permissions that you have given to this IAM-User ? dpending on helps you connect and create resources using terraform that is if this IAM-User does not have access to S3 or any access to EC2 or load balancer or VPC, then this person cannot create those in terraform. So, need to make sure that IAM-User have access to those particular services.
+
+- you can make a new folder or use existing folder with help of commands -> "mkdir", "cd"
+- you can open it in vs code from aws cli using command "code ."
+
+Tip: 
+- Make use of Documentation, which will definitely help.Using documentation, you can get "API Access" which basically talks to different cloud services when you define that cloud provider. You can find different versions, you can either use latest version or different version suitable for you."Use Provider" option will be present, where you can copy and paste the code.
+- Link for documentation: https://registry.terraform.io/providers/hashicorp/aws/latest/docs
+
+
+Steps:
+
+- Create a provider.tf file in the folder. Basically, a provider is a platform that AWS is trying to connect. Let's say you want to automate infrastructure on openstack, then openstack becomes your provider.
+
+Provider.tf file:
+- you can choose any version and backend (can be s3 backend) where you can store state file. Even if you wnat to store your state file on "S3" or different backends, you need to define in the terraform block.
+- Basically, you will tell terraform to automate infrastructure on "AWS".
+- In provider block, you have to provide configuration options ( scroll down in the aws documentation to find provider options)
+
+Below is the provider block and you will have other options to include:
+
+provider "aws" {
+  region     = "us-west-2"
+  access_key = "my-access-key"
+  secret_key = "my-secret-key"
+}
+
+Note: Hardcoded credentials are not recommended in any terraform configuration. That's why it's better to configure via "aws configure" command. Other options could be defining environment variable, tfvars file ...
+
+- Give region in the provider block.
+- After providing provider block, you have to run few commands to make sure that vs-code is ready to start creating resources.
+- you need to run "terraform init" command, before that you can verify whether terraform is installed or not by just using the command "terraform" in the terminal.
+
+Below output, if you run "terraform" in the terminal:
+
+PS C:\Users\yetin\OneDrive\Desktop\Devops\Terraform\Terraform_with_AWS_Project> terraform
+Usage: terraform [global options] <subcommand> [args]
+
+The available commands for execution are listed below.
+The primary workflow commands are given first, followed by
+less common or more advanced commands.
+
+Main commands:
+  init          Prepare your working directory for other commands
+  validate      Check whether the configuration is valid
+  plan          Show changes required by the current configuration
+  apply         Create or update infrastructure
+  destroy       Destroy previously-created infrastructure
+
+All other commands:
+  console       Try Terraform expressions at an interactive command prompt
+  fmt           Reformat your configuration in the standard style
+  force-unlock  Release a stuck lock on the current workspace
+  get           Install or upgrade remote Terraform modules
+  graph         Generate a Graphviz graph of the steps in an operation
+  import        Associate existing infrastructure with a Terraform resource
+  login         Obtain and save credentials for a remote host
+  logout        Remove locally-stored credentials for a remote host
+  metadata      Metadata related commands
+  output        Show output values from your root module
+  providers     Show the providers required for this configuration
+  refresh       Update the state to match remote systems
+  show          Show the current state or a saved plan
+  state         Advanced state management
+  taint         Mark a resource instance as not fully functional
+  test          Execute integration tests for Terraform modules
+  untaint       Remove the 'tainted' state from a resource instance
+  version       Show the current Terraform version
+  workspace     Workspace management
+
+Global options (use these before the subcommand, if any):
+  -chdir=DIR    Switch to a different working directory before executing the
+                given subcommand.
+  -help         Show this help output, or the help for a specified subcommand.
+  -version      An alias for the "version" subcommand.
+
+- Run "terraform init" in the terminal, this is the first command you will run if you are working with terraform. If you don't run this command, terraform will not know what's going on. Basically, you are initializing terraform here.
+- When you run "terraform init", it starts initializing backend, provider plugins and at the last it should depict as successfully installed. Below is the output you get:
+
+PS C:\Users\yetin\OneDrive\Desktop\Devops\Terraform\Terraform_with_AWS_Project> terraform init
+
+Initializing the backend...
+
+Initializing provider plugins...
+- Finding hashicorp/aws versions matching "5.46.0"...
+- Installing hashicorp/aws v5.46.0...
+- Installed hashicorp/aws v5.46.0 (signed by HashiCorp)
+
+Terraform has created a lock file .terraform.lock.hcl to record the provider
+selections it made above. Include this file in your version control repository
+so that Terraform can guarantee to make the same selections by default when
+you run "terraform init" in the future.
+
+Terraform has been successfully initialized!
+
+You may now begin working with Terraform. Try running "terraform plan" to see
+any changes that are required for your infrastructure. All Terraform commands
+should now work.
+
+If you ever set or change modules or backend configuration for Terraform,
+rerun this command to reinitialize your working directory. If you forget, other
+commands will detect it and remind you to do so if necessary.
+
+- Basically, above is first step of verification to confirm that you are connected to AWS using terraform. That is now you can automate things using terraform on your AWS platform. Now, you can create resources on AWS platform using terraform and run "terraform plan" and "terraform apply".
+- In the left side, you can see all the files that will be downloaded.
+- Files ".terrfaorm" and "lock file" will be downloaded when you initiate "terraform init". No need to worry about these files.
+- Need to think about files which ends with ".tf", be careful better to not touch those files.
+- Create another file "main.tf".
+
+
+main.tf file:
+
+Infrastructure Description:
+
+- Have a VPC, inside a VPC there are subnets.
+- An internet gateway is connected to VPC and there are route tables, which tells or directs internet gateway to connect to the particular subnet.
+- Need to create ec2 instances and attach IAM Role.
+- A load balancer is present for putting these ec2 instances behind it and give them s3 access.
+
+Tip: It's better to create infrastructure through "AWS Console" first then terrfaorm. First perform with root access and then try with "IAM User" access as policies may be over-whelming.
+
+Steps to create infrastructure:
+
+Step1:
+- A resource block is needed to create infrastructure on AWS. It helps to create resources. 
+- Search in documentation on how to create VPC.
+- you can define all values in variables.tf file. The variable values which are defined in this "variables.tf" file can be used in "main.tf" file by indictaing as var.varibale name.
+- you can variables from "main.tf" file.
+
+Step2:
+- Create subnets by creating resource blocks as many subnets you want. you can take help of documentation.
+
+Note: It's better to take reference of both AWS Console UI and Terraform documentation as you will know what you will be doing.
+
+- In AWS Console, when you want to create a subnet, it asks to select for which vpc you want, following it will ask to give name and select region where you want to deploy and cidr-range as well. 
+- For above case, in subnet you can reference the vpc in terraform by using the format: "aws_vpc.name_of_vpc.id" where name_of_vpc only changes and aws_vpc and id remains sane. Example: vpc_id = "aws_vpc.Bhavana.id".
+- Give cidr block range and basically assume that you have created VPC with a lot of IP Range and within the VPC you are creating a subnet that is within the VPC range you are taking a small area and you are creating that particular subnet range.
+- When you choose "/16" you get around 65,000 IP's and within that 65,000 IP'S you are giving around 256 IP'S to that particular subnet.Below is the example:
+
+resource "aws_vpc" "Bhavana" {
+    cidr_block = var.cidr
+    
+}
+
+resource "aws_subnet" "subnet-1" {
+    vpc_id = "aws_vpc.Bhavana.id"
+    cidr_block = "10.0.0.0/24"
+    
+}
+
+- Select availability zone where you want to. Basically you need to select availability zones in the region which you selected.
+- Give match_public_ip also as this will be required because instance should have the IP Address so that you can see what web server is it creating.you need to mention this as "true" if you want to have IP Addresses attached to your instances inside this particular subnet. Below is the example:
+
+resource "aws_subnet" "subnet-1" {
+    vpc_id = "aws_vpc.Bhavana.id"
+    cidr_block = "10.0.0.0/24"
+    availability_zone = "us-east-1a"
+    map_customer_owned_ip_on_launch = true
+    
+}
+
+- Create one more subnet.
+- you cannot have same name for two subnets, need to have different names. Give cidr range and availability zone accordingly.
+
+** Upto now you created "VPC" which is in green line and subnets in "us-east-1a" and "us-east-1b" regions.
+
+- Need to attch internet in order to access ec2 instances on the internet.
+- First Internet Gateway need to be created, attach to VPC and then define it, routes in the route table.
+
+Step3:
+
+- Create another resource block for internet gateway and attach the VPC in which you are launching. Below is the block which associates internet gateway with "VPC" but not with subnets.
+
+resource "aws_internet_gateway" "Bha_IGW" {
+    vpc_id = "aws_vpc.Bhavana.id"
+    
+}
+- For giving access, you need to use the route tables which defines where the traffic should go to.Need to define everything, where the VPC should go to internet gateway.
+
+What route table defines ?
+- let's say you have a subnet and how the traffic has to flow in the subnet. So, that is explained by the route table. Let's say there is some instance or some packets flowing in the subnet. So, if there is no route table you don't know the path or how the traffic has to flow in the subnet.
+
+- Even when we create our table, there will be one route there which we need to define manually.Through terraform also, we need to define that.
+- Define the VPC Id, where you are going to launch the route table.
+- Inside the route table, you need to define the route also. So, define the route for this route.
+
+Note: Proper configuration is very important, you can use "terraform validate" command always to check the syntax and for perfect validation.
+
+- In the route, you need to define the cidr block ( can observe, if you go through the AWS UI Console ). Give cidr block as "0.0.0.0/0" which means everything inside this VPC should connect to a particular thing which is target. That is you need to connect target through gateway ( This is internet way which was created earlier ), so you can just give as gateway_id = "aws_internet_gateway.Bha_IGW.id".
+- Basically, what you are trying to do in this step is "There is a public subnet that you already have. Now, after this you are going to take this route table which has the destination as the internet gateway and probably you are going to attach this to the public subnet."
+
+
+Step4:
+
+- Next step is to attach the internet gateway to the public subnets which will be achieved through route table association.
+- aws_route_table is the resource that you are going to use to connect your route table with particular subnet.Need to define the things properly based on public or private subnet.
+- The above works in UI as by going to subnet association where you will need to define and select whatever subnet you want to attach and then save association. Similar thing, you will perform through terraform.
+- Define one more resource block, aws_route_table_association. Inside that you need to define some parameters, first is what subnet do you want to attach and second is where is it going to be attached.
+- Attach to first subnet by giving subnet parameter as subnet_id = "aws_subnet_subnet-1.id". This is the subnet, that you want to associate this route table and you have to give route table id also ( called as routable id )
+
+resource "aws_route_table_association" "Bha_RT_A" {
+    route_table_id = "aws_route_table.Bha_RT.id"
+    subnet_id = "aws_subnet.subnet-1.id"
+    
+}
+
+- The above explains that the subnet is associated with the route table, whenever it is connected it will have Public IP, Public Internet Connection because of route here.
+- similarly, you need to do for second subnet.
+
+resource "aws_route_table_association" "Bha_RT_A_2" {
+    route_table_id = "aws_route_table.Bha_RT.id"
+    subnet_id = "aws_subnet.subnet-2.id"
+    
+}
+
+
+** Upto now everything is done for creating VPC, except security groups. Please remember that names should be unique.
+
+Implementation of half-way:
+
+- Before implementing run, you have to run few commands.
+- First, run "terraform validate" command to validate the syntax. Below will be the output, if everything is perfect.
+
+PS C:\Users\yetin\OneDrive\Desktop\Devops\Terraform\Terraform_with_AWS_Project> terraform validate
+Success! The configuration is valid.
+
+- Now run the command for what is going to be created or deleted. So, run the command "terraform plan". It's kind of a dry run, that you are trying to do on AWS Platform which will tell when you apply this configuration these are the things that are going to get created.
+
+For Eg: In the output, it gave as 7 to add, 0 to change, 0 to destroy. Basically, it's going to create VPC, 2 subnets, 1 route table, associating subnets with route table and internet gateway. All these are created for now. 
+
+- "+" symbol indicates that it is creating; "-" symbol red color indicates that it is destroying, "yellow, wavy symbol" indicates that it is changing something.
+
+- Now run "terraform apply", which will actually create things in the console. This happens if particular provider keys ( AWS access and secret keys) are connected properly or else you will get an error.
+
+- It will prompt you before creating, you need to type "yes". Then only, it creates.
+
+- Then the infrastructure will be created within seconds, terraform is very very fast and you have a kind of recovery if everything is lost.
+
+Note: you can even use terraform to perform CI/CD pipeline.Hashicorp Configuartion Language is similar to yaml and json.
+
+- Now, you can see the created infrastructure in AWS platform.you can search for VPC and can everything, VPC, subnets, route table, internet gateway and subnet association done for 2 subnets.
+
+
+Step5:
+
+- Define a security group, that you might be using for ec2 instances and also for load balancer. you can choose to create a separate security group for load balancer.
+
+[
+
+Reference: Load Balancer having a security group and ec2 having a separate security group.
+
+- for that, you have to create a new resource with name "aws_security_group".
+- In this, you need to define the name prefix here which you can give as "web_sg".
+- When you define a security group, you need two things.Inbound Rules and Outbound Rules.
+
+*[By default, if you create a security group you will have no inbound rules and have all outbound rules.]
+
+- you need to define some inbound rules as you are using, need to do ssh or access in public internet. Need ports 80 and 22.
+- First define ingress, ingress means inbound rules. Define from port and in port, refer documentation for easy understanding.
+- Need VPC_Id also, you can copy from documentation and edit accordingly.
+- Change VPC_Id with your Id, give name as websg, description is optional (if you want you can or else remove).
+- In ingress rules, give port as 80, cidr block can be anywhere just give as "0.0.0.0/0" so that everyone can access this instance. Cidr block should be in square brackets, give in brackets as ["0.0.0.0/0"] and give ipv4 if you have or remove if you don't have.
+- Give one more ingress rule for port 22.
+- Protocol is TCP is everywhere.
+
+Egress Rules:
+
+- From port and to port are 0, means all ports for everywhere that is for all IP'S and everything is allowed here.
+- Remove IPV6, if you want you can mention or else not required.
+
+
+Step6:
+
+- Need to create instances inside the subnet you have created or you can do after your s3 is ready.
+- There will be many times you might have to create S3 in terraform for a lot of different use cases.
+- Creating an S3 bucket is very easy, you can create using a single line. But, if you want to add few parameters or configuration like enabling starting website, .... you need to create few more resources about it.
+- you can copy the code from documentation or code it, name the "S3" bucket as which you might have never used or which no one has used because it has to be globally unique.
+- "tags" is optional, if you want you can keep or if you want the code to be short you can remove.
+- Bucket has been created, let's say if you want to make the bucket public or if you want to give some more configuration you can choose to add. 
+- Some configurations are required, if you want to make things public.
+
+
+How to upload data that is file to a S3 bucket ?
+
+
+
+Step7:
+
+- Create ec2 instances inside the subnet.
+- To create instance, you need to create a new resource block and name it as "webserver-1".
+- Few parameters like ami, instance-type basically whatever things you insert in your console when you create that is what you need to enter here as well that is if you want to add a key-pair or security-group you can simply keep in the resource block.
+- Take "ubuntu" as the machine as it is mostly used, you need "ami-id" of that or you can use the data block to get the ami directly. But, it will be easy if you understand how it is done.
+- Go to console -> ec2 -> launch ec2 instance -> go to "Application and Machine Images" -> choose whatevr is required and copy the "ami-id" -> paste the copy-id in the "ami" of resource ec2 in terraform code. Make sure to keep ami-id in double quotes as it's a string.
+- Check configurations from console and give whatever are required.
+- Choose instance type as "t2.micro" and you will soon have a "load-balancer" in the configuration which may cost you a little money. But, if you delete it as soon as the project is completed, it will not cost you.
+- you need to define the security group, by saying "vpc_security_group_ids". Basically, it's a string or list of strings and use the same security group which you have already created and you have to give the name as aws_security_group.security_group_name.id as following: vpc_security_group_ids = [aws_security_group.Bhav_SG.id]
+- Above has to be in a particular subnet, let's put this in subnet one which you have already created. Make use of that and give as following: "subnet_id = aws_subnet.subnet-1.id".
+- It will be a good approach if you are able to access this on port 80 on internet by giving all the user data that is basically assume that you are creating a startup script.
+- Here, basically you choose to use user data so that whenever you launch ec2 instance it will have a sample thing on the web page on port 80 as security group is allowing port 80. IN console, you might have under "advanced details" section of instance.
+- 
+
+
+Use-Case:
+- There will be a use-case, where you might need to install some of the applications or some software or maybe setup some things. you can do that by using a bash script and put it in the user data section, advanced details section in the ec2 instance of aws console.
+- Similarly, if you were doing it in terraform you can do this by first creating a file.
+
+File ->
+
+- Let's create a file with name "user_data.sh", the script always ends with ".sh".
+- Basically you can code this file or untill you get apt of it you can use other resources as well.
+- In order to use this file, you have to define a parameter "user_data" in the main.tf file.
+- user data can be defined in various ways, you can choose to put the value directly but it will make your code bigger and not the best practice, instead use the file element.
+- Before using file element, make sure that user-data is always encoded. It's a rule, even if you see in console it will be mentioned as " user data has already been base64 encoded".So, you need to encode it outside all the time.
+- you can encode by just giving user_data parameter as "base64encode" and then choose the file "user_data_ud_s1.sh" as follows: user_data = base64decode(file("user_data_ud.sh")). 
+- Now, when you start the instance this script (file) will run and install the software and probably if someone tries to access the instance, they will see the "welcome page".
+- Haven't created any key-pairs or anything, not going to do now.
+
+
+Another ec2 instance:
+- Create another ec2 instance and do similar steps as you have done for previous instance.
+- Name the instance as "webserver-2", change the subnet name as it's launched for another subnet and create another ".sh" file and change the information in two ".sh" files accordingly.
+- In order to see the proper load-balancing, it's better to give different information in two ".sh" files for two instances and for printing on the webpage you can give as "<p>Welcome to Terraform</p>" and "<p>Welcome to DevOps</p>".
+- For ensuring proper load-balancing, you will be able to see different names.
+
+Note: Both instances should have different names as 2 instances cannot have the same name, can have same "ami" as they both are in same region and change the subent name as it's launched in different subnet. Below is the code for both instances:
+
+resource "aws_instance" "webserver-1" {
+  ami = "ami-04b70fa74e45c3917"
+  instance_type = "t2.micro"
+  vpc_security_group_ids = [aws_security_group.Bhav_SG.id]
+  subnet_id = aws_subnet.subnet-1.id
+  user_data = base64decode(file("user_data_ud_s1.sh"))
+
+}
+
+resource "aws_instance" "webserver-2" {
+  ami = "ami-04b70fa74e45c3917"
+  instance_type = "t2.micro"
+  vpc_security_group_ids = [aws_security_group.Bhav_SG.id]
+  subnet_id = aws_subnet.subnet-2.id
+  user_data = base64decode(file("user_data_ud_s2.sh"))
+
+}
+
+- Upto now, VPC and all the components with security group, S3 bucket and two instances ready.
+- According to diagram, everything is done except the load-balancer part and also the "IAM" part.
+
+Execution upto-three fourth way:
+
+- New things will be created that is if you destroy and run again from first all will be created or else only the new ones.
+- Security group, S3 bucket ( can give ACL and public access as well), ec2 instances will be created apart from the old ones. Below are the resources created doing from first:
+
+terraform state list
+aws_instance.webserver-1
+aws_instance.webserver-2
+aws_internet_gateway.Bha_IGW
+aws_route_table.Bha_RT
+aws_route_table_association.Bha_RT_A
+aws_route_table_association.Bha_RT_A_2
+aws_s3_bucket.ExampleBucket
+aws_security_group.Bhav_SG
+aws_subnet.subnet-1
+aws_subnet.subnet-2
+aws_vpc.Bhavana
+aws_vpc_security_group_egress_rule.allow_all_traffic_ipv4
+aws_vpc_security_group_ingress_rule.ingress_rule_1
+aws_vpc_security_group_ingress_rule.ingress_rule_2
+
+- you can check in the console and verify whether everything is created or not, after creating you can destroy.
+
+Output:
+
+- In the output, you will get the instance id of the server.
+
+How you can fetch the instance-id of the ec2 instance by using in user data ?
+
+- In ec2 you will have metadata, which stores all the data in a particular IP Address which is "169.254.169.254", you can get all the different kind of data. It's the same IP Address, so all can use the same IP Address.
+
+Step8:
+
+Load Balancer Part:
+
+- Make sure you know, how to create a load balancer in the console first.
+- Basically, there are 4 types of load balancers and when you try to create a load balancer, it asks "which type of load balancer?".
+- If you create any load balancer, it asks for internet gateway, which VPC, subnets all the things.
+- Here, you can create an application load balancer, layer 7 balancer.
+- "AWS Documentation" can be referred, can refer "aws_elb" in data sources. Data sources can be used to get the resources or parameters to your code.
+- Use one more resource block "aws_lb" and name it, give whether it want to be public, private or internal. In order to be public, give "internal=false".
+- Mention the type also, whether it is application or network or gateway in order to indicate that you are creating an application load balancer.
+- In the console, it is mentioned that there's a need of security groups and target groups. Assign them also.
+- Mention the same security groups that you use, using the same security group and along with this you need to mention what subnet you want to attach.
+- Even, if you see in the console you will get a chance to choose from the list of subnets. Basically, subnets will be a list that is you will define as many defined that is required subnets in a list. Below is the way:
+
+  security_groups = [aws_security_group.Bhav_SG.id]
+  subnets = [aws_subnet.subnet-1.id,aws_subnet.subnet-2.id]
+
+- Basically, load balancer is being assigned with subnets because load balancer is managing the traffic to two instances, instance 1 and instance 2. One of the instance is in the public subnet 1 in one availability zone and other instance is in other availability zone. Now, load balancer should have access to both of the subnets. So, that's why with help of load 
+balancer trying to associate both the subnets with the load balancer and additionally what you will also do is you will create a target group.
+- Now, with target group what you will tell load-balancer is ?, "This is your target, if someone is calling you then send the request to this target and target will send the request to instances. Next step is to create a target group.
+- you can give the name by just giving tags as below:
+
+tags = {
+    name = "web"
+  }
+
+Step9:
+
+Target Group:
+
+- create a resource block, "aws_lb_target_group" which will hold the instances behind the load balancer.
+- If you go to console, you will know what and all are required for eg: what is target group name, port, protocol and what VPC should be there and all, along with health checks.
+- Mention port as "80" because as there is no SSL, you are going to use port 80 and protocol as "HTTP" and you need to put VPC Id also.
+- Define health checks part also that is what ports are needed and so, inside health checks you need to define the path which it should check because this is the actual use case of target group. It helps when targets are not ready or not healthy, you should not put the traffic. So, obviously you should not put the traffic.
+- you should mention path as "/" as it is home path -> If you observe, even your instances will be running in slash part ("/") and port will be traffic port.
+- you can also choose to add things like status code, if you want to add a particular status code like 400 or 502 or something you can also do that.
+- Up to now target group is ready but it's empty, below is the code up to now:
+
+resource "aws_lb_target_group" "Bhav_tg" {
+
+  name = tg
+  port = 80
+  protocol = "HTTP"
+  vpc_id = aws_vpc.Bhavana.id
+
+  health_check {
+    path = "/"
+    port = "traffic-port"
+    
+  }
+    
+}
+
+- Now you need to define what should be inside the target group, for that you need to define a resource block "aws_lb_target_group_attachment" which is going to attach your instance with the target group.
+- Give the name as "attach1" and inside this you need to add two parameters one with the id of the instance and other with the id of target group that is you need to define target group arn which is going to be the one you already have and you have to give as ".arn" as it's asking for "arn".
+- Similarly give target id, target id is the instance that you have and give port as 80 as it's going to run on that instance. 
+- Up to now you associated just one instance.
+
+Scenario:
+- This is the target group, it has only one instance but you need to manage load between two instances, will you add both the instances here or how will you do ?
+
+-> you will copy the entire code and create for another instance, but let's say you are doing this for production environment you don't have to create another resource block.
+-> you can instead use counter index or for each or map that is you can choose to reduce your code by having all these things at once.
+
+
+- Up to now two things are ready, but load-balancer is not actually attached to a target group and you will do this by adding a listener rule.
+- Define by adding a resource block "aws_lb_listener", in this you need to define this particular target group should be attached to load balancer or else even though load balancer is created and target group is created they are not actually attached that is they are not listening to each other.
+- you need to define what target group should be attached to what load balancer and load balancer is going to be the one that you have created and also define what port and protocol and there will be a target also.
+- Port will be "80" and protocol will be "HTTP", define default action which will be forward or redirect or for showing a particular response. So here, you need to define "when you define that particular target group ? What is your action ? Is it forward kind of action or redirection or a particular response or an error where you will define target_group_arn -> will be the arn of the particular target group that you have created.
+- Along with this you need to define the type that is what is the action ?. Action is forward and forward will be the traffic whenever you come here.
+
+
+Note: It's good practice to have different security groups to enable more security that is like a security group which only give access to the load balancer through each other. you can take as an assignment and implement it.
+
+
+Step9:
+
+- In order to see the output, you can define the output block.
+- Try to get an output of the load balancer, DNS Name. 
+- Basically, output is used to get some information printed on your terminal. Let's say if you want to see for eg: load balancer is getting created through this project now and one thing is you can go to your AWS Console and figure out what is your load balancer IP or what is your load balancer DNS but in some organization you might not have access to the console. So, what you can do is you can use this output, you can create this output module here or you can also create a file called "outputs.tf" and you can print all the things that you want and once this terraform execution is done, it will print the load balancer DNS on the terminal. So, you can just use it.  
+
+
+After all steps are coded, now it is ready to run the program.
+
+- you can run the "terraform validate" command to check the syntax errors, if any you can debug.
+- Next you can run the "terraform fmt" command to check whether code is looking good or not that is formatting of the code.
+- Now you can run "terraform init", "terraform plan" and "terraform apply" commands to see what infrastructure has been created.
+- Be patient when you are running above commands, sometimes it may delay due to the network or even there may be delay in API calls of "AWS" console and wait till your load balancer is active state and also the health check of your target group is healthy, that means your target group can forward your request to the ec2 instances.
+- Need to make sure that it is all healthy, if it is not healthy load balancer will not put the traffic on the target group.
+- Above are the basic things, that you need to keep in mind.
+- Make sure you have good knowledge of console and understand how things are going in the console, then things will be easy how to do using either through terraform or python or any SDK.
+- After running terraform apply, you can check things in the console. Below is the observation:
+
+-> you should see the target groups, where both of them should be healthy. A load balancer will be created where state need to be active and if it is not active, if it is in provisioning state, you need to wait for some time to come into active state.
+-> In load balancer, you will see a new rule will be added when you connect target group with load balancers which is a very important step. If you don't have this, you might not get the response.
+
+
+Outputs in Terraform:
+
+- After running terraform apply, you will get below outputs in terraform:
+
+Apply complete! Resources: 19 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+loadbalancerDNS = "Bhav-lb-1253354986.us-east-1.elb.amazonaws.com"
+
+- By using "terraform state list" you can know the list of resources created.
+
+List:
+
+terraform state list
+aws_instance.webserver-1
+aws_instance.webserver-2
+aws_internet_gateway.Bha_IGW
+aws_lb.Bhav_lb
+aws_lb_listener.listener
+aws_lb_target_group.Bhav_tg
+aws_lb_target_group_attachment.attach1
+aws_lb_target_group_attachment.attach2
+aws_route_table.Bha_RT
+aws_route_table_association.Bha_RT_A_1
+aws_route_table_association.Bha_RT_A_2
+aws_s3_bucket.ExampleBucket
+aws_security_group.Bhav_SG
+aws_subnet.subnet-1
+aws_subnet.subnet-2
+aws_vpc.Bhavana
+aws_vpc_security_group_egress_rule.egress_rule
+aws_vpc_security_group_ingress_rule.ingress_rule_1
+aws_vpc_security_group_ingress_rule.ingress_rule_2
+
+
+
+- Now check in console whether all are active, and healthy.
+
+- Check in browser also whether load balancer is performing well or not.
+
+
+
+
+Interview Question:
+
+- How this set-up of infrastructure ( above coded steps) is used by devops engineers on day-to-day activities or day-to-day life ?
+-> This is a very common project that devops engineers does in their day-to-day life, for eg: what you have done above is you have created instances, you can deploy applications that is in the above case you deployed a HTML Page but usually you can consider that you have deployed a golang application or a python application and by using a load balancer you are allowing people from outside to access it.
+-> Now anyone will deploy this official website in the public subnets, if you want it to be secure in your organization you might put it in the private subnets but when you are doing portfolio building or a requirement for a client who is okay with deploying instances in the public subnet then this project is the one that you are looking for.
+-> Here everything is done through terraform nothing through manual process, let's say if you want to set-up some complex things you can also integrate ansible with terraform which is a very common use case right now where you will have one click solution.
+
+
+
+Note: 
+
+1) For this project, you don't need any bucket ACL as in specific, because it's okay if bucket is public or private you don't actually require. you can have an IAM Rule that is going to give access to S3 which does not require any other properties and just having a bucket is all you need for this project.
+2) When instance is in initializing state, we have to wait for it to come for 2/2 status checks because when you have a ec2 instance user data script it does take time to install things and bootstrap on the backend.
+3) you can also check what user data script is used by going to "Instance Settings" in "Instance State"-> click on "edit user section" -> "you can see the script running, using whatever you have given", sometimes it may throw an error due to some syntax error or issue in command. Always, dry run the code in your machine, make sure that the script is correct because you don't get the errors because all this is done at the back end and you are not going to do "ssh" to it.
+4) Verification: you can copy the "public ip address" of the ec2 instance and copy it in the browser to see whether everything is showing or not ( you can see the data whatever you gave in user data script for running ).
+5) When you use tags, make sure to add a "equal to" (=) symbol here.
+
+
+
+
+Assignment:
+
+1) Try to create an IAM Rule, and see how you can access it , how can your ec2 can access S3 ?. That could be your challenge, if done make sure to share it on linkedin.
+
+
+
+Challenges Faced:
+
+- Was not able to perform uisng AWS CLI as some commands didn't work. For Eg: pw
+
+- Was not able to go to the folder or the path which I already created.
+
+- So, moved to vs code and opened the folder in vs code, configured aws in the terminal.
+
+Below was the issue, I faced:
+
+C:\Users\yetin> aws configure
+AWS Access Key ID [****************CWRI]:
+AWS Secret Access Key [****************STSG]:
+Default region name [us-east-1]:
+Default output format [json]:
+
+C:\Users\yetin> cd Desktop/
+
+C:\Users\yetin\Desktop> cd Devops/
+The system cannot find the path specified.
+
+C:\Users\yetin\Desktop> cd Devops
+The system cannot find the path specified.
+
+C:\Users\yetin\Desktop> pwd
+'pwd' is not recognized as an internal or external command,
+operable program or batch file.
+
+C:\Users\yetin\Desktop> mkdir
+The syntax of the command is incorrect.
+
+C:\Users\yetin\Desktop> mkdir dev
+
+C:\Users\yetin\Desktop> cd dev
+
+C:\Users\yetin\Desktop\dev> cd Devops
+The system cannot find the path specified.
+
+- Got issues while using terraform init, plan.Resolved by refreshing, deleting lock file.
+- Got issues in personal laptop due to terraform version, provider and even while doing terraform plan sometimes without doing terraform init.
+- Did mistakes in route table, user data file paths resolved with debugging.
+
+
+
+
+-------->
+
+Got following errors:
+
+terraform validate
+╷
+│ Error: Incorrect attribute value type
+│ 
+│   on main.tf line 61, in resource "aws_vpc_security_group_ingress_rule" "ingress_rule_1":
+│   61:   cidr_ipv4         = ["0.0.0.0/0"]
+│ 
+│ Inappropriate value for attribute "cidr_ipv4": string required.
+╵
+╷
+│ Error: Incorrect attribute value type
+│ 
+│   on main.tf line 70, in resource "aws_vpc_security_group_ingress_rule" "ingress_rule_2":
+│   70:   cidr_ipv4         = ["0.0.0.0/0"]
+│ 
+│ Inappropriate value for attribute "cidr_ipv4": string required.
+╵
+╷
+│ Error: Incorrect attribute value type
+│ 
+│   on main.tf line 79, in resource "aws_vpc_security_group_egress_rule" "egress_rule":
+│   79:   cidr_ipv4         = ["0.0.0.0/0"]
+│ 
+│ Inappropriate value for attribute "cidr_ipv4": string required.
+╵
+╷
+│ Error: only alphanumeric characters and hyphens allowed in "name": "Bhav_lb"
+│ 
+│   with aws_lb.Bhav_lb,
+│   on main.tf line 110, in resource "aws_lb" "Bhav_lb":
+│  110:   name               = "Bhav_lb"
+│ 
+╵
+╷
+│ Error: expected load_balancer_type to be one of ["application" "network" "gateway"], got Application
+│ 
+│   with aws_lb.Bhav_lb,
+│   on main.tf line 112, in resource "aws_lb" "Bhav_lb":
+│  112:   load_balancer_type = "Application"
+│ 
+╵
+╷
+│ Error: only alphanumeric characters and hyphens allowed in "name"
+│ 
+│   with aws_lb_target_group.Bhav_tg,
+│   on main.tf line 123, in resource "aws_lb_target_group" "Bhav_tg":
+│  123:   name     = "My_TG"
+│ 
